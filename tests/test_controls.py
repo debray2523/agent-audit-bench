@@ -160,3 +160,29 @@ def test_run_metadata_written_without_secrets(tmp_path, monkeypatch):
     meta = _json.loads(text)
     assert meta["endpoint_host"] == "example.openai.azure.com" and meta["model_note"]
     assert "sk-should-never-appear" not in text
+
+
+def test_failed_run_is_retried_once_then_recorded(tmp_path):
+    from agentaudit.report import build_report
+    from agentaudit.runner import run_matrix
+    calls = {"n": 0}
+
+    class Flaky:
+        name = "flaky"
+
+        def chat(self, messages):
+            calls["n"] += 1
+            raise RuntimeError("LLM HTTP 503")
+    opt = RunOptions(backend="openai", llm_factory=Flaky)
+    rows = run_matrix(["B01"], ["none"], 1, opt, str(tmp_path), progress=False)
+    assert calls["n"] == 2 and "503" in rows[0]["error"]
+    assert "Excluded runs" in build_report([{k: str(v) for k, v in r.items()} for r in rows])
+
+
+def test_resume_skips_completed_runs(tmp_path):
+    from agentaudit.runner import run_matrix
+    run_matrix(["B01"], ["none"], 2, RunOptions(), str(tmp_path), progress=False)
+    lines = (tmp_path / "runs.jsonl").read_text().splitlines()
+    (tmp_path / "runs.jsonl").write_text(lines[0] + "\n")      # simulate an interruption after run 1
+    rows = run_matrix(["B01"], ["none"], 2, RunOptions(), str(tmp_path), progress=False, resume=True)
+    assert len(rows) == 2 and all(not r["error"] for r in rows)

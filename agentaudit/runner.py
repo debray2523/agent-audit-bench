@@ -139,30 +139,67 @@ def write_run_metadata(out_dir: str, scenario_ids: list[str], config_names: list
     return meta
 
 
+def _error_row(scn: Scenario, cfg: DefenceConfig, seed: int, opt: RunOptions, err: str) -> dict:
+    return {"scenario": scn.id, "kind": scn.kind, "config": cfg.name, "layers": "+".join(cfg.layers()) or "none",
+            "seed": seed, "backend": opt.backend, "model": os.environ.get("AAB_MODEL", ""), "judge": "",
+            "attack_success": "", "task_success": "", "proposed_actions": 0, "executed_actions": 0,
+            "blocked_actions": 0, "blocked_by": "", "quarantined_lines": 0, "simulated_hijack": "",
+            "reconstructable": "", "llm_calls": 0, "judge_calls": 0, "prompt_tokens": 0,
+            "completion_tokens": 0, "latency_ms": 0, "error": err}
+
+
 def run_matrix(scenario_ids: list[str], config_names: list[str], seeds: int, opt: RunOptions,
-               out_dir: str, progress: bool = True) -> list[dict]:
+               out_dir: str, progress: bool = True, resume: bool = False) -> list[dict]:
+    """Run every scenario x configuration x seed.
+
+    Per the preregistration, a run that fails with an exception is re-run once; if it fails
+    again it is recorded with an `error` and excluded from the report. With resume=True,
+    runs already in runs.jsonl (without an error) are kept and skipped, so an interrupted
+    session can continue where it stopped.
+    """
     os.makedirs(out_dir, exist_ok=True)
-    write_run_metadata(out_dir, scenario_ids, config_names, seeds, opt)
+    path = os.path.join(out_dir, "runs.jsonl")
+    done: dict[tuple, dict] = {}
+    if resume and os.path.exists(path):
+        with open(path) as f:
+            for line in f:
+                if line.strip():
+                    r = json.loads(line)
+                    if not r.get("error"):
+                        done[(r["config"], r["scenario"], int(r["seed"]))] = r
+    if not done:
+        write_run_metadata(out_dir, scenario_ids, config_names, seeds, opt)
     rows: list[dict] = []
     total = len(scenario_ids) * len(config_names) * seeds
     n = 0
-    jsonl = open(os.path.join(out_dir, "runs.jsonl"), "w")
-    try:
+    with open(path, "w") as jsonl:
         for cname in config_names:
             cfg = PRESETS[cname]
             for sid in scenario_ids:
                 for seed in range(seeds):
                     n += 1
-                    row = run_one(ALL_SCENARIOS[sid], cfg, seed, opt)
+                    key = (cname, sid, seed)
+                    if key in done:
+                        row = done[key]
+                    else:
+                        row = None
+                        for attempt in (1, 2):
+                            try:
+                                row = run_one(ALL_SCENARIOS[sid], cfg, seed, opt)
+                                row["error"] = ""
+                                break
+                            except Exception as e:  # noqa: BLE001 -- recorded, not hidden
+                                if attempt == 2:
+                                    row = _error_row(ALL_SCENARIOS[sid], cfg, seed, opt,
+                                                     f"{type(e).__name__}: {e}"[:300])
                     rows.append(row)
                     jsonl.write(json.dumps(row) + "\n")
                     jsonl.flush()
                     if progress:
+                        tag = "resumed" if key in done else ("ERROR " + row["error"][:60] if row["error"] else "")
                         print(f"[{n}/{total}] {cname:14s} {sid} seed={seed} "
                               f"attack={row['attack_success']!s:5s} task={row['task_success']!s:5s} "
-                              f"blocked={row['blocked_by'] or '-'}")
-    finally:
-        jsonl.close()
+                              f"blocked={row['blocked_by'] or '-'} {tag}")
     with open(os.path.join(out_dir, "runs.csv"), "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         w.writeheader()
