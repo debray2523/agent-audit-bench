@@ -6,6 +6,12 @@
     python -m agentaudit report results/sim/runs.csv
     python -m agentaudit aibom --out aibom.json
     python -m agentaudit verify-log results/sim/logs/A01__all__seed0.jsonl
+
+Operating guarded agents (agentaudit.guard):
+    python -m agentaudit policy-check policy.json
+    python -m agentaudit stop --flag-file /var/run/agents.stop [--agent AGENT_ID]
+    python -m agentaudit resume --flag-file /var/run/agents.stop [--agent AGENT_ID]
+    python -m agentaudit aibom --policy policy.json --model gpt-4o --provider azure-openai --out aibom.json
 """
 from __future__ import annotations
 
@@ -71,6 +77,15 @@ def cmd_report(a):
 
 
 def cmd_aibom(a):
+    if a.policy:
+        from .aibom import build_aibom_from_policy
+        from .guard import Policy
+        bom = build_aibom_from_policy(Policy.from_file(a.policy), a.model or "unspecified", a.provider or "unspecified",
+                                      a.judge_model)
+        with open(a.out, "w") as f:
+            json.dump(bom, f, indent=2)
+        print(f"Wrote {a.out} ({len(bom['components'])} components)")
+        return
     if a.backend == "openai":
         llm = OpenAICompatibleLLM.from_env("AAB")
         name, provider = llm.name, llm.provider
@@ -89,6 +104,48 @@ def cmd_verify(a):
     ok, idx = log.verify()
     print("Chain intact." if ok else f"Chain BROKEN at entry {idx}.")
     sys.exit(0 if ok else 1)
+
+
+def cmd_stop(a):
+    from .guard import FileKillSwitch
+    FileKillSwitch(a.flag_file).suspend(a.agent)
+    print(f"Suspended {a.agent or 'ALL agents'} via {a.flag_file}. Running sessions are revoked on their next call.")
+
+
+def cmd_resume(a):
+    from .guard import FileKillSwitch
+    FileKillSwitch(a.flag_file).resume(a.agent)
+    print(f"Resumed {a.agent or 'all agents'}. Revoked sessions stay revoked; new sessions may start.")
+
+
+def cmd_policy_check(a):
+    from .guard import HIGH, UNTRUSTED, Policy
+    try:
+        p = Policy.from_file(a.path)
+    except Exception as e:  # noqa: BLE001
+        sys.exit(f"Invalid policy: {e}")
+    warnings = []
+    if not p.default_deny:
+        warnings.append("default_deny is false: undeclared tools will run")
+    print(f"{'tool':22s} {'risk':5s} {'output':9s} {'roles':24s} {'sensitive':16s} limits / secrets")
+    for n, t in p.tools.items():
+        roles = ",".join(t.roles) if t.roles is not None else "ANY"
+        lim = "; ".join(f"{k}:{','.join(f'{kk}={vv}' for kk, vv in vars(v).items() if vv is not None)}"
+                        for k, v in t.limits.items())
+        sec = f" secrets={','.join(t.secrets)}" if t.secrets else ""
+        print(f"{n:22s} {t.risk:5s} {t.output_trust:9s} {roles[:24]:24s} {','.join(t.sensitive_args)[:16]:16s} {lim}{sec}")
+        if t.risk == HIGH and t.roles is None:
+            warnings.append(f"{n}: high-risk tool open to ANY role")
+        if t.risk == HIGH and not t.sensitive_args and not t.limits:
+            warnings.append(f"{n}: high-risk tool with no sensitive_args and no limits")
+        if t.output_trust != UNTRUSTED and any(w in n for w in ("read", "fetch", "search", "browse", "inbox", "scrape", "crawl", "download")):
+            warnings.append(f"{n}: name suggests outside content but output_trust is 'trusted' -- check")
+    print(f"\nDelegation tools: {p.delegation_tools or 'none'} (budget {p.delegation_budget}); "
+          f"session TTL {p.session_ttl_seconds:g}s, max {p.max_calls_per_session} calls")
+    print("\nWarnings:" if warnings else "\nNo warnings.")
+    for w in warnings:
+        print(f"  - {w}")
+    sys.exit(1 if warnings and a.strict else 0)
 
 
 def main(argv=None):
@@ -120,12 +177,28 @@ def main(argv=None):
     b.add_argument("--backend", choices=["scripted", "openai"], default="scripted")
     b.add_argument("--config", default="all", choices=list(PRESETS))
     b.add_argument("--judge-model", default="")
+    b.add_argument("--policy", help="build from a guard policy file instead of the benchmark agents")
+    b.add_argument("--model", default="", help="with --policy: the agent model name/version")
+    b.add_argument("--provider", default="", help="with --policy: e.g. azure-openai, self-hosted")
     b.add_argument("--out", default="aibom.json")
     b.set_defaults(fn=cmd_aibom)
 
     v = sub.add_parser("verify-log", help="verify an audit log's hash chain")
     v.add_argument("path")
     v.set_defaults(fn=cmd_verify)
+
+    st = sub.add_parser("stop", help="kill switch: suspend guarded agents via a flag file")
+    st.add_argument("--flag-file", required=True)
+    st.add_argument("--agent", default=None)
+    st.set_defaults(fn=cmd_stop)
+    rs = sub.add_parser("resume", help="lift a kill-switch suspension")
+    rs.add_argument("--flag-file", required=True)
+    rs.add_argument("--agent", default=None)
+    rs.set_defaults(fn=cmd_resume)
+    pc = sub.add_parser("policy-check", help="validate and summarise a guard policy file")
+    pc.add_argument("path")
+    pc.add_argument("--strict", action="store_true", help="exit non-zero on warnings (for CI)")
+    pc.set_defaults(fn=cmd_policy_check)
 
     a = p.parse_args(argv)
     a.fn(a)

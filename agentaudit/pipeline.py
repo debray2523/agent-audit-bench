@@ -40,6 +40,8 @@ PRESETS: dict[str, DefenceConfig] = {
     "D5-audit": replace(_NONE, name="D5-audit", audit=True),
     "D6-killswitch": replace(_NONE, name="D6-killswitch", killswitch=True),
     "all": DefenceConfig("all", True, True, True, True, True, True),
+    # The same six layers, but implemented by the reusable agentaudit.guard library
+    "guard-all": DefenceConfig("guard-all", True, True, True, True, True, True),
 }
 
 

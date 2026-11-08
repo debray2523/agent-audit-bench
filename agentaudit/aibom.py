@@ -59,3 +59,34 @@ def build_aibom(model_name: str, provider: str, config: DefenceConfig, judge_mod
         },
         "components": components,
     }
+
+
+def build_aibom_from_policy(policy, model_name: str, provider: str, judge_model: str = "") -> dict:
+    """AI-BOM for your own guarded agent, built from its guard policy file."""
+    from .guard.rules import LLM_JUDGE_PROMPT
+    hosted = provider not in ("self-hosted", "local")
+    undisclosed = (["training data composition", "fine-tuning data", "safety evaluations at the exact version used"]
+                   if hosted else [])
+    components = [{"type": "machine-learning-model", "bom-ref": "model:agent", "name": model_name,
+                   "supplier": {"name": provider},
+                   "properties": [{"name": "aab:role", "value": "agent reasoning model"}] +
+                                 [{"name": "aab:undisclosed", "value": u} for u in undisclosed]}]
+    if judge_model:
+        components.append({"type": "machine-learning-model", "bom-ref": "model:judge", "name": judge_model,
+                           "properties": [{"name": "aab:role", "value": "independent judge (D3)"}]})
+        components.append({"type": "data", "bom-ref": "prompt:judge", "name": "judge-prompt",
+                           "hashes": [{"alg": "SHA-256", "content": _sha(LLM_JUDGE_PROMPT)}]})
+    for n, t in policy.tools.items():
+        components.append({"type": "application", "bom-ref": f"tool:{n}", "name": n, "description": t.description,
+                           "properties": [{"name": "aab:risk", "value": t.risk},
+                                          {"name": "aab:output-trust", "value": t.output_trust},
+                                          {"name": "aab:roles", "value": ",".join(t.roles) if t.roles is not None else "*"},
+                                          {"name": "aab:secrets", "value": ",".join(t.secrets)}]})
+    return {
+        "bomFormat": "CycloneDX", "specVersion": "1.6", "serialNumber": f"urn:uuid:{uuid.uuid4()}", "version": 1,
+        "metadata": {"timestamp": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+                     "component": {"type": "application", "name": "guarded agent"},
+                     "properties": [{"name": "aab:policy-sha256",
+                                     "value": _sha(json.dumps(policy.to_dict(), sort_keys=True))}]},
+        "components": components,
+    }

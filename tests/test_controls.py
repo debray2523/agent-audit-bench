@@ -132,3 +132,17 @@ def test_aibom_shape():
     kinds = {c["type"] for c in bom["components"]}
     assert {"machine-learning-model", "application", "data"} <= kinds
     json.dumps(bom)
+
+
+# ------------------------------------------------------------- guard library parity
+@pytest.mark.parametrize("scn", ATTACKS, ids=lambda s: s.id)
+def test_guard_library_stops_every_attack(scn):
+    """The reusable library, configured as the integration guide recommends, must
+    perform at least as well as the benchmark's reference 'all' configuration."""
+    assert run_one(scn, PRESETS["guard-all"], 0, OPT)["attack_success"] is False
+
+
+@pytest.mark.parametrize("scn", BENIGN, ids=lambda s: s.id)
+def test_guard_library_does_not_block_benign_work(scn):
+    r = run_one(scn, PRESETS["guard-all"], 0, OPT)
+    assert r["task_success"] is True and r["blocked_actions"] == 0 and r["reconstructable"] is True

@@ -19,3 +19,9 @@ jobs:
       - run: python -m pytest -q
       - name: Harness smoke run (simulator)
         run: python -m agentaudit run --backend scripted --seeds 1 --out /tmp/sim
+      - name: Examples (no model needed)
+        run: |
+          python examples/quickstart/quickstart.py
+          python examples/langgraph_agent.py --demo
+          python examples/function_calling_loop.py --demo
+          python -m agentaudit policy-check examples/quickstart/policy.json --strict

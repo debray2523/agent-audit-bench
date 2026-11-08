@@ -33,11 +33,16 @@ def run_one(scn: Scenario, cfg: DefenceConfig, seed: int, opt: RunOptions) -> di
     rng = random.Random(seed)
     world = World()
     scn.setup(world)
-    judge = None
-    if cfg.judge:
-        judge = LLMJudge(opt.judge_factory()) if opt.judge == "llm" else RuleJudge()
-    pipeline = ControlPipeline(world, cfg, judge=judge,
-                               approver=OracleApprover(opt.approver_miss_rate, random.Random(seed + 7919)))
+    if cfg.name.startswith("guard"):
+        from .guard_bridge import GuardPipeline
+        pipeline = GuardPipeline(world, cfg, opt.approver_miss_rate, seed,
+                                 judge_llm=opt.judge_factory() if opt.judge == "llm" else None)
+    else:
+        judge = None
+        if cfg.judge:
+            judge = LLMJudge(opt.judge_factory()) if opt.judge == "llm" else RuleJudge()
+        pipeline = ControlPipeline(world, cfg, judge=judge,
+                                   approver=OracleApprover(opt.approver_miss_rate, random.Random(seed + 7919)))
     trace = RunTrace(scn.id, cfg.name, seed)
 
     def hook(step, ctx):

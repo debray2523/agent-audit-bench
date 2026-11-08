@@ -1,0 +1,35 @@
+{
+  "default_deny": true,
+  "delegation": {"tools": [], "budget": 3},
+  "session": {"ttl_seconds": 1800, "max_calls": 50},
+  "tools": {
+    "read_document": {
+      "risk": "read",
+      "output_trust": "untrusted",
+      "description": "Read a document received from a supplier or customer."
+    },
+    "lookup_vendor": {
+      "risk": "read",
+      "output_trust": "trusted",
+      "description": "Look up a vendor in the vendor master."
+    },
+    "pay_invoice": {
+      "risk": "high",
+      "output_trust": "trusted",
+      "roles": ["invoice_clerk"],
+      "params": ["invoice_id", "amount", "account"],
+      "sensitive_args": ["account"],
+      "limits": {"amount": {"max": 50000, "min": 0.01}, "account": {"pattern": "ACC-[0-9]{3}-[A-Z]{2}"}},
+      "secrets": ["PAYMENTS_API_TOKEN"],
+      "description": "Pay an invoice. Irreversible."
+    },
+    "send_email": {
+      "risk": "high",
+      "output_trust": "trusted",
+      "roles": ["invoice_clerk"],
+      "sensitive_args": ["to"],
+      "limits": {"to": {"allowed_domains": ["corp.example"]}, "body": {"max_length": 2000}},
+      "description": "Send an email."
+    }
+  }
+}
