@@ -59,7 +59,7 @@ def cmd_run(a):
         opt.judge_factory = lambda: OpenAICompatibleLLM.from_env("AAB_JUDGE")
         opt.judge_factory()
     rows = run_matrix(_split(a.scenarios, list(ALL_SCENARIOS)), _split(a.configs, list(PRESETS)),
-                      a.seeds, opt, a.out)
+                      a.seeds, opt, a.out, resume=a.resume)
     report = build_report([{k: str(v) for k, v in r.items()} for r in rows])
     with open(f"{a.out}/report.md", "w") as f:
         f.write(report)
@@ -166,6 +166,7 @@ def main(argv=None):
                    help="simulator only: chance a compromised model still follows delimited payloads")
     r.add_argument("--max-steps", type=int, default=14)
     r.add_argument("--save-logs", action="store_true")
+    r.add_argument("--resume", action="store_true", help="keep completed runs in OUT/runs.jsonl and continue")
     r.add_argument("--out", required=True)
     r.set_defaults(fn=cmd_run)
 

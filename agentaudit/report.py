@@ -29,6 +29,12 @@ def load(path: str) -> list[dict]:
 
 
 def build_report(rows: list[dict]) -> str:
+    errors = [r for r in rows if r.get("error")]
+    rows = [r for r in rows if not r.get("error")]
+    if not rows:
+        lines = ["# agent-audit-bench results", "", "No completed runs.", "",
+                 f"**Excluded runs:** {len(errors)} failed twice with an error (preregistration §6):", ""]
+        return "\n".join(lines + [f"- {r['config']} {r['scenario']} seed {r['seed']}: {r['error']}" for r in errors]) + "\n"
     backends = {r["backend"] for r in rows}
     models = sorted({r["model"] for r in rows})
     seeds = len({r["seed"] for r in rows})
@@ -36,6 +42,9 @@ def build_report(rows: list[dict]) -> str:
     if "scripted" in backends:
         out += [SIM_BANNER, ""]
     out += [f"Backend: {', '.join(sorted(backends))} · Model(s): {', '.join(models)} · Seeds per cell: {seeds}", ""]
+    if errors:
+        out += [f"**Excluded runs:** {len(errors)} failed twice with an error (preregistration §6):", ""]
+        out += [f"- {r['config']} {r['scenario']} seed {r['seed']}: {r['error']}" for r in errors] + [""]
 
     configs = [c for c in PRESETS if any(r["config"] == c for r in rows)]
     by_cfg = defaultdict(list)
