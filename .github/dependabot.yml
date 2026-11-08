@@ -1,0 +1,13 @@
+# Keeps the CI actions and the Python dev/test dependencies (pytest, langgraph) up to date.
+# The library itself has no runtime dependencies.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

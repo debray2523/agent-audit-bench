@@ -180,6 +180,10 @@ tests/                       106 tests, including real LangGraph graphs and a fa
 - OWASP GenAI Security Project. *Top 10 for Agentic Applications 2026.*
 - NIST. *Cyber AI Profile (IR 8596), draft.*
 
+## Reporting a security problem
+
+Please use private vulnerability reporting, not a public issue. See [`SECURITY.md`](SECURITY.md).
+
 ## Citing and licence
 
 Cite with [`CITATION.cff`](CITATION.cff). MIT licence; see [`LICENSE`](LICENSE).
