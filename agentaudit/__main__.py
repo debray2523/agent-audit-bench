@@ -127,12 +127,13 @@ def cmd_policy_check(a):
     warnings = []
     if not p.default_deny:
         warnings.append("default_deny is false: undeclared tools will run")
-    print(f"{'tool':22s} {'risk':5s} {'output':9s} {'roles':24s} {'sensitive':16s} limits / secrets")
+    print(f"{'tool':22s} {'risk':5s} {'output':9s} {'roles':24s} {'sensitive':16s} limits / credentials")
     for n, t in p.tools.items():
         roles = ",".join(t.roles) if t.roles is not None else "ANY"
         lim = "; ".join(f"{k}:{','.join(f'{kk}={vv}' for kk, vv in vars(v).items() if vv is not None)}"
                         for k, v in t.limits.items())
-        sec = f" secrets={','.join(t.secrets)}" if t.secrets else ""
+        # Report only how many credentials a tool declares; never print anything secret-shaped.
+        sec = f" credentials-declared={len(t.secrets)}" if t.secrets else ""
         print(f"{n:22s} {t.risk:5s} {t.output_trust:9s} {roles[:24]:24s} {','.join(t.sensitive_args)[:16]:16s} {lim}{sec}")
         if t.risk == HIGH and t.roles is None:
             warnings.append(f"{n}: high-risk tool open to ANY role")
