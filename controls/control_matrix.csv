@@ -1,0 +1,16 @@
+control_id,cert_in_check_as_reported,source_status,owasp_agentic_2026,nist_csf_2_0,defence_layers,test_scenarios,evidence_type,notes
+C01,Agent can exceed its authorised permissions,VERIFY against CERT-In PDF (taken from press summary),ASI03,PR.AA,D2,"A02, A05",automated,Role allowlist enforced at the gateway
+C02,Agent uses tools without approval,VERIFY against CERT-In PDF (taken from press summary),ASI02,PR.AA,"D2, D3, D4",A05,automated,Out-of-role and out-of-task tool calls
+C03,Agent bypasses approval mechanisms,VERIFY against CERT-In PDF (taken from press summary),ASI09,PR.AA,"D2, D4",A09,automated,Self-asserted approval flags rejected by strict argument schema
+C04,Agent misuses credentials,VERIFY against CERT-In PDF (taken from press summary),ASI03,PR.AA,"D2, D3",A03,automated,Credential exfiltration via outbound email
+C05,Unsafe task delegation and delegation loops,VERIFY against CERT-In PDF (taken from press summary),ASI08,PR.PS,"D2, D3",A07,automated,Delegation budget at gateway; task-scope check at judge
+C06,Emergency stop: suspend agent or workflow and revoke credentials,VERIFY against CERT-In PDF (taken from press summary),ASI10,RS.MI,D6,A08,automated,Measures tool executions after the operator's stop request
+C07,Agent memory manipulated or leaked between users,VERIFY against CERT-In PDF (taken from press summary),ASI06,PR.DS,D2,A06,automated,Per-user memory namespaces
+C08,Unique identity and defined permissions per agent,VERIFY against CERT-In PDF (taken from press summary),ASI03,PR.AA,D2,all,automated,Credential token recorded on every executed action
+C09,Authenticated and logged agent-to-agent communication,VERIFY against CERT-In PDF (taken from press summary),ASI07,PR.AA; DE.CM,D5,A07,partial,Harness models delegation as a tool call only; true multi-agent messaging not yet covered
+C10,"Records to reconstruct requests, delegations, permissions, decisions, tools and external actions",VERIFY against CERT-In PDF (taken from press summary),—,DE.AE; RS.AN,D5,all,automated,Hash-chained log; reconstructability metric
+C11,Prompt injection and unsafe action from untrusted content,VERIFY against CERT-In PDF (taken from press summary),ASI01,PR.DS; DE.CM,"D1, D3, D4","A01, A03, A04",automated,Includes a poisoned-data case with no imperative language
+C12,AI bill of materials incl. gaps where providers do not disclose,VERIFY against CERT-In PDF and CERT-In BOM technical guidelines,ASI04,ID.AM,aibom,—,artifact,CycloneDX-style output from `python -m agentaudit aibom`
+C13,AI incidents reported within six hours; logs retained 180 days,VERIFY against CERT-In PDF (taken from press summary),—,RS.CO,D5 (supports),—,attestation,Process control; the harness only supplies the evidence
+C14,Risk-tier classification (low / moderate / high / critical),VERIFY against CERT-In PDF (taken from press summary),—,GV.RM; ID.RA,—,—,attestation,Out of scope for automated tests
+C15,AI-assisted audit outputs verified independently,VERIFY against CERT-In PDF (taken from press summary),—,GV.OV,—,—,attestation,Applies to auditors' own use of AI

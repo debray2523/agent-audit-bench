@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "agent-audit-bench: testing AI-agent controls against CERT-In agentic AI audit checks"
+type: software
+authors:
+  - family-names: Ray
+    given-names: Debendra
+    orcid: "https://orcid.org/0009-0002-5784-4442"
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/debray2523/agent-audit-bench"
+keywords:
+  - AI security
+  - agentic AI
+  - AI governance
+  - prompt injection
+  - CERT-In
+  - audit
