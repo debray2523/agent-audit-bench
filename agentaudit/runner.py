@@ -94,9 +94,55 @@ def run_one(scn: Scenario, cfg: DefenceConfig, seed: int, opt: RunOptions) -> di
     }
 
 
+def write_run_metadata(out_dir: str, scenario_ids: list[str], config_names: list[str], seeds: int,
+                       opt: RunOptions) -> dict:
+    """Record what was run, on what, before the first model call (preregistration §3).
+    Never records API keys. AAB_MODEL_NOTE carries facts only the operator knows, such as
+    the Azure model version shown in the portal or the Ollama model digest."""
+    import datetime as dt
+    import platform
+    import subprocess
+    import sys
+    from urllib.parse import urlparse
+
+    from . import __version__
+
+    def git(*args: str) -> str:
+        try:
+            return subprocess.run(["git", *args], capture_output=True, text=True, timeout=10,
+                                  cwd=os.path.dirname(os.path.abspath(__file__))).stdout.strip()
+        except Exception:  # noqa: BLE001
+            return ""
+
+    meta = {
+        "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        "agentaudit_version": __version__,
+        "git_commit": git("rev-parse", "HEAD"),
+        "git_tags_at_commit": git("tag", "--points-at", "HEAD").split(),
+        "git_dirty": bool(git("status", "--porcelain")),
+        "backend": opt.backend,
+        "model": os.environ.get("AAB_MODEL", "scripted-compromisable-v1" if opt.backend == "scripted" else ""),
+        "endpoint_host": urlparse(os.environ.get("AAB_BASE_URL", "")).hostname or "",
+        "azure_api_version": os.environ.get("AAB_AZURE_API_VERSION", ""),
+        "model_note": os.environ.get("AAB_MODEL_NOTE", ""),
+        "judge": opt.judge,
+        "approver_miss_rate": opt.approver_miss_rate,
+        "max_steps": opt.max_steps,
+        "seeds": seeds,
+        "scenarios": scenario_ids,
+        "configs": config_names,
+        "python": sys.version.split()[0],
+        "platform": platform.platform(),
+    }
+    with open(os.path.join(out_dir, "model.json"), "w") as f:
+        json.dump(meta, f, indent=2)
+    return meta
+
+
 def run_matrix(scenario_ids: list[str], config_names: list[str], seeds: int, opt: RunOptions,
                out_dir: str, progress: bool = True) -> list[dict]:
     os.makedirs(out_dir, exist_ok=True)
+    write_run_metadata(out_dir, scenario_ids, config_names, seeds, opt)
     rows: list[dict] = []
     total = len(scenario_ids) * len(config_names) * seeds
     n = 0

@@ -146,3 +146,17 @@ def test_guard_library_stops_every_attack(scn):
 def test_guard_library_does_not_block_benign_work(scn):
     r = run_one(scn, PRESETS["guard-all"], 0, OPT)
     assert r["task_success"] is True and r["blocked_actions"] == 0 and r["reconstructable"] is True
+
+
+def test_run_metadata_written_without_secrets(tmp_path, monkeypatch):
+    import json as _json
+
+    from agentaudit.runner import run_matrix
+    monkeypatch.setenv("AAB_API_KEY", "sk-should-never-appear-1234567890")
+    monkeypatch.setenv("AAB_BASE_URL", "https://example.openai.azure.com")
+    monkeypatch.setenv("AAB_MODEL_NOTE", "gpt-4.1 version 2025-xx")
+    run_matrix(["B01"], ["none"], 1, RunOptions(), str(tmp_path), progress=False)
+    text = (tmp_path / "model.json").read_text()
+    meta = _json.loads(text)
+    assert meta["endpoint_host"] == "example.openai.azure.com" and meta["model_note"]
+    assert "sk-should-never-appear" not in text
