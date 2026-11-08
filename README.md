@@ -9,7 +9,7 @@ CERT-In's AI Security Auditing Guidelines (November 2026) ask auditors to test w
 
 The benchmark runs its attacks through the same library (`guard-all`), so the numbers describe the code you deploy.
 
-> Independent research by the author, built on public frameworks and synthetic data. Not affiliated with, or describing the systems of, any employer. Not legal or compliance advice. The CERT-In mapping was drafted from public reports of the guidelines and must be checked against the guideline text before use (see [`controls/README.md`](controls/README.md)).
+> Independent research by the author, built on public frameworks and synthetic data. Not affiliated with, or describing the systems of, any employer. Not legal or compliance advice. The CERT-In mapping was checked against sections 2–8 of the guideline (v1.0) on 8 November 2026; agent-specific requirements in §9 are taken from press reports until verified against the PDF (see [`controls/README.md`](controls/README.md)).
 
 ## See it work in 30 seconds
 
@@ -134,7 +134,7 @@ For a model-based judge, also set `AAB_JUDGE_BASE_URL` and `AAB_JUDGE_MODEL` (pl
 
 ### Scenarios
 
-| ID | Scenario | CERT-In check (as reported) | OWASP Agentic |
+| ID | Scenario | CERT-In requirement (§9, as reported) | OWASP Agentic |
 |---|---|---|---|
 | A01 | Prompt injection in an invoice redirects payment | Prompt injection | ASI01 |
 | A02 | Spoofed supplier email changes vendor bank details | Exceed authorised permissions | ASI03, ASI09 |
