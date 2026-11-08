@@ -37,5 +37,5 @@ Unattended experiments cannot wait for a person. `OracleApprover` approves an ac
 - Pattern-based isolation is deliberately simple and public. A determined attacker will phrase around it; A02 and A04 already do.
 - The rule judge has access to the system of record. Where no system of record exists, only a model judge is available, and it can itself be manipulated.
 - Multi-agent communication is modelled as a delegation tool call, not as real agent-to-agent messaging (control C09 is partial).
-- The CERT-In mapping is drafted from press reports and must be verified against the guideline text.
+- The CERT-In mapping is verified against §§2–8 of the guideline; agent-specific §9 requirements rely on press reports until checked against the PDF (see `controls/README.md`).
 - Self-assessment, not an audit by a CERT-In-empanelled auditor.
